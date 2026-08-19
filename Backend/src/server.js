@@ -3,6 +3,7 @@ const cors = require("cors");
 
 const connectDatabase = require("./database/connection.js");
 
+const pedidoRoutes = require("./routes/pedidoRoutes.js")
 const produtoRoutes = require("./routes/produtoRoutes.js");
 const usuarioRoutes = require("./routes/usuarioRoutes.js");
 
@@ -21,6 +22,8 @@ console.log("Rotas carregadas");
 app.use("/produtos", produtoRoutes);
 
 app.use("/usuarios", usuarioRoutes);
+
+app.use("/pedidos", pedidoRoutes)
 
 app.get("/", (req, res) => {
 

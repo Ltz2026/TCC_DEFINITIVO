@@ -8,7 +8,7 @@ import Produtos from "../pages/Produtos";
 import CadastroProduto from "../pages/CadastroProduto";
 import Carrinho from "../pages/Carrinho";
 import Editar from "../pages/Editar";
-
+import Pedido from "../pages/Pedido";
 
 function AppRoutes() {
 
@@ -69,6 +69,11 @@ function AppRoutes() {
             <Route
                 path="/carrinho"
                 element={<Carrinho />}
+            />
+
+            <Route
+                path="/pedidos"
+                element={<Pedido />}
             />
 
 

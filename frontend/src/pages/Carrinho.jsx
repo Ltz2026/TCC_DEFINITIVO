@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import "./Carrinho.css";
 
 function Carrinho() {
 
+    const navigate = useNavigate();
+
+
     const [carrinho, setCarrinho] =
         useState([]);
+
 
     const [finalizando, setFinalizando] =
         useState(false);
@@ -46,7 +51,18 @@ function Carrinho() {
                     carrinhoSalvo
                 );
 
+
+            if (!Array.isArray(dados)) {
+
+                setCarrinho([]);
+
+                return;
+
+            }
+
+
             setCarrinho(dados);
+
 
         } catch {
 
@@ -80,10 +96,13 @@ function Carrinho() {
 
 
         localStorage.setItem(
+
             "carrinho",
+
             JSON.stringify(
                 novoCarrinho
             )
+
         );
 
     }
@@ -98,7 +117,9 @@ function Carrinho() {
         quantidade
     ) {
 
-        if (quantidade < 1) {
+        if (
+            quantidade < 1
+        ) {
 
             return;
 
@@ -112,8 +133,6 @@ function Carrinho() {
                     if (
                         produto._id === id
                     ) {
-
-                        // Não ultrapassar estoque
 
                         if (
                             quantidade >
@@ -133,8 +152,7 @@ function Carrinho() {
 
                             ...produto,
 
-                            quantidade:
-                                quantidade
+                            quantidade
 
                         };
 
@@ -153,11 +171,48 @@ function Carrinho() {
 
 
         localStorage.setItem(
+
             "carrinho",
+
             JSON.stringify(
                 novoCarrinho
             )
+
         );
+
+    }
+
+
+    // ==========================================
+    // PEGAR USUÁRIO LOGADO
+    // ==========================================
+
+    function obterUsuario() {
+
+        const usuarioSalvo =
+            localStorage.getItem(
+                "usuario"
+            );
+
+
+        if (!usuarioSalvo) {
+
+            return null;
+
+        }
+
+
+        try {
+
+            return JSON.parse(
+                usuarioSalvo
+            );
+
+        } catch {
+
+            return null;
+
+        }
 
     }
 
@@ -181,56 +236,173 @@ function Carrinho() {
         }
 
 
+        // ==========================================
+        // USUÁRIO
+        // ==========================================
+
+        const usuario =
+            obterUsuario();
+
+
+        if (!usuario) {
+
+            alert(
+                "Você precisa estar logado para finalizar a compra."
+            );
+
+            navigate("/");
+
+            return;
+
+        }
+
+
+        // ==========================================
+        // GERENTE NÃO COMPRA
+        // ==========================================
+
+        if (
+            usuario.tipo === "gerente"
+        ) {
+
+            alert(
+                "O gerente não pode realizar compras."
+            );
+
+            return;
+
+        }
+
+
+        // ==========================================
+        // VERIFICAR ID
+        // ==========================================
+
+        const usuarioId =
+            usuario.id ||
+            usuario._id;
+
+
+        if (!usuarioId) {
+
+            alert(
+                "Não foi possível identificar o usuário."
+            );
+
+            return;
+
+        }
+
+
         try {
 
             setFinalizando(true);
 
 
-            // Comprar cada produto
+            // ==========================================
+            // PREPARAR PRODUTOS
+            // ==========================================
 
-            for (
-                const produto
-                of carrinho
+            const produtos =
+                carrinho.map(
+                    produto => ({
+
+                        produtoId:
+                            produto._id,
+
+                        quantidade:
+                            Number(
+                                produto.quantidade
+                            )
+
+                    })
+                );
+
+
+            // ==========================================
+            // ENVIAR PEDIDO PARA O BACKEND
+            // ==========================================
+
+            const resposta =
+                await fetch(
+                    "http://localhost:3001/pedidos",
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                usuarioId,
+
+                                usuarioNome:
+                                    usuario.nome,
+
+                                usuarioEmail:
+                                    usuario.email,
+
+                                produtos
+
+                            })
+
+                    }
+                );
+
+
+            // ==========================================
+            // LER RESPOSTA
+            // ==========================================
+
+            const texto =
+                await resposta.text();
+
+
+            let dados;
+
+
+            try {
+
+                dados =
+                    JSON.parse(
+                        texto
+                    );
+
+            } catch {
+
+                console.error(
+                    "Resposta do servidor:",
+                    texto
+                );
+
+                throw new Error(
+                    "O servidor não retornou uma resposta válida."
+                );
+
+            }
+
+
+            // ==========================================
+            // VERIFICAR ERRO
+            // ==========================================
+
+            if (
+                !resposta.ok
             ) {
 
-                const resposta =
-                    await fetch(
-                        `http://localhost:3001/produtos/${produto._id}/comprar`,
-                        {
+                throw new Error(
 
-                            method: "POST",
+                    dados.mensagem ||
 
-                            headers: {
+                    "Erro ao finalizar compra."
 
-                                "Content-Type":
-                                    "application/json"
-
-                            },
-
-                            body:
-                                JSON.stringify({
-
-                                    quantidade:
-                                        produto.quantidade
-
-                                })
-
-                        }
-                    );
-
-
-                const dados =
-                    await resposta.json();
-
-
-                if (!resposta.ok) {
-
-                    throw new Error(
-                        dados.mensagem ||
-                        "Erro ao finalizar compra."
-                    );
-
-                }
+                );
 
             }
 
@@ -247,14 +419,30 @@ function Carrinho() {
             setCarrinho([]);
 
 
+            // ==========================================
+            // SUCESSO
+            // ==========================================
+
             alert(
                 "Compra realizada com sucesso!"
             );
 
 
+            // ==========================================
+            // IR PARA PEDIDOS
+            // ==========================================
+
+            navigate(
+                "/pedidos"
+            );
+
+
         } catch (error) {
 
-            console.error(error);
+            console.error(
+                "Erro ao finalizar compra:",
+                error
+            );
 
 
             alert(
@@ -263,17 +451,14 @@ function Carrinho() {
             );
 
 
-            /*
-            Recarregar o carrinho
-            caso alguma operação
-            tenha falhado.
-            */
-
             carregarCarrinho();
+
 
         } finally {
 
-            setFinalizando(false);
+            setFinalizando(
+                false
+            );
 
         }
 
@@ -286,25 +471,38 @@ function Carrinho() {
 
     const total =
         carrinho.reduce(
+
             (
                 soma,
                 produto
             ) => {
 
                 return (
+
                     soma +
+
                     (
                         Number(
                             produto.preco
                         ) *
-                        produto.quantidade
+
+                        Number(
+                            produto.quantidade
+                        )
                     )
+
                 );
 
             },
+
             0
+
         );
 
+
+    // ==========================================
+    // RENDER
+    // ==========================================
 
     return (
 
@@ -338,12 +536,12 @@ function Carrinho() {
 
                 ) : (
 
-
-                    /* =================================
-                       PRODUTOS
-                    ================================= */
-
                     <>
+
+
+                        {/* =================================
+                            PRODUTOS
+                        ================================== */}
 
                         <div className="carrinho-produtos">
 
@@ -401,11 +599,18 @@ function Carrinho() {
                                         <div className="quantidade">
 
                                             <button
+                                                type="button"
                                                 onClick={() =>
                                                     alterarQuantidade(
+
                                                         produto._id,
+
                                                         produto.quantidade - 1
+
                                                     )
+                                                }
+                                                disabled={
+                                                    finalizando
                                                 }
                                             >
                                                 −
@@ -420,11 +625,18 @@ function Carrinho() {
 
 
                                             <button
+                                                type="button"
                                                 onClick={() =>
                                                     alterarQuantidade(
+
                                                         produto._id,
+
                                                         produto.quantidade + 1
+
                                                     )
+                                                }
+                                                disabled={
+                                                    finalizando
                                                 }
                                             >
                                                 +
@@ -436,11 +648,15 @@ function Carrinho() {
                                         {/* REMOVER */}
 
                                         <button
+                                            type="button"
                                             className="remover-carrinho"
                                             onClick={() =>
                                                 removerProduto(
                                                     produto._id
                                                 )
+                                            }
+                                            disabled={
+                                                finalizando
                                             }
                                         >
                                             Remover
@@ -461,12 +677,16 @@ function Carrinho() {
                         <div className="carrinho-total">
 
                             <h2>
+
                                 Total: R${" "}
+
                                 {total.toFixed(2)}
+
                             </h2>
 
 
                             <button
+                                type="button"
                                 className="finalizar-compra"
                                 onClick={
                                     finalizarCompra
@@ -477,13 +697,17 @@ function Carrinho() {
                             >
 
                                 {finalizando
+
                                     ? "Processando..."
+
                                     : "Finalizar Compra"
+
                                 }
 
                             </button>
 
                         </div>
+
 
                     </>
 

@@ -36,6 +36,10 @@ function Navbar() {
                         <Link to="/cadastro-produto">
                             Cadastrar Produto
                         </Link>
+
+                        <Link to="/pedidos">
+                            Pedidos
+                        </Link>
                     </>
 
                 ) : (
@@ -47,6 +51,10 @@ function Navbar() {
 
                         <Link to="/carrinho">
                             Carrinho
+                        </Link>
+
+                        <Link to="/pedidos">
+                            Pedidos
                         </Link>
                     </>
 
